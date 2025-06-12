@@ -35,6 +35,9 @@ function verifyHmac(req) {
 
 console.log("Shopify store:", process.env.SHOPIFY_SHOP);
 console.log("Admin token present?", !!process.env.SHOPIFY_API_TOKEN);
+console.log("Shopify HMAC:", hmacHeader);
+console.log("Generated HMAC:", generatedHmac);
+
 
 app.post('/webhook', async (req, res) => {
   console.log("📥 Incoming webhook request");
