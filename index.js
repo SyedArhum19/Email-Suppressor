@@ -56,7 +56,7 @@ app.post('/webhook', async (req, res) => {
 
     const { id: orderId, tags, customer } = order;
 
-    if (!tags?.includes('Subscription') || !customer?.id) {
+    if (!tags?.includes('appstle_subscription_recurring_order') || !customer?.id) {
       console.log(`Skipping order ${orderId} (not a subscription or missing customer)`);
       return res.sendStatus(200);
     }
