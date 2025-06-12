@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: shopify-webhook-middleware
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node index.js
+    autoDeploy: true
+    envVars:
+      - key: SHOPIFY_API_TOKEN
+        sync: false
+      - key: SHOPIFY_SHOP
+        sync: false
+      - key: SHOPIFY_API_VERSION
+        sync: false
+      - key: WEBHOOK_SECRET
+        sync: false
+      - key: NODE_ENV
+        value: production
