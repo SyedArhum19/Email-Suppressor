@@ -9,16 +9,15 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-
-// 🧠 Use raw body parser with verify to store raw buffer per request
+// 🧠 Capture raw body for HMAC verification
 app.use(bodyParser.raw({
   type: 'application/json',
   verify: (req, res, buf) => {
-    req.rawBody = buf;  // attach to request
+    req.rawBody = buf;
   }
 }));
 
-// 🔐 HMAC Verification
+// 🔐 Shopify HMAC Verification
 function verifyHmac(req) {
   const hmacHeader = req.headers['x-shopify-hmac-sha256'];
   if (!hmacHeader || !req.rawBody) return false;
@@ -34,72 +33,80 @@ function verifyHmac(req) {
   );
 }
 
-// ✅ Logs
 console.log("Shopify store:", process.env.SHOPIFY_SHOP);
 console.log("Admin token present?", !!process.env.SHOPIFY_API_TOKEN);
 
 app.post('/webhook', async (req, res) => {
+  console.log("📥 Incoming webhook request");
+
+  // 🛡️ Verify HMAC or skip in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('⚠️ HMAC verification skipped in development');
+  } else if (!verifyHmac(req)) {
+    console.warn('❌ HMAC verification failed');
+    return res.status(401).send('Unauthorized');
+  }
+
+  let order;
   try {
-    // ✅ HMAC Check
-    if (process.env.NODE_ENV !== 'production') {
-  console.warn('⚠️ HMAC verification skipped in development');
-} else if (!verifyHmac(req)) {
-  console.warn('⚠️ HMAC verification failed');
-  return res.status(401).send('Unauthorized');
-}
+    order = JSON.parse(req.rawBody.toString());
+  } catch (err) {
+    console.error('❌ Failed to parse order payload:', err.message);
+    return res.sendStatus(400);
+  }
 
-   
+  console.log("📦 Order received:", order.id);
 
+  const { id: orderId, tags = '', customer } = order;
 
-    const order = JSON.parse(req.rawBody.toString());
-    console.log("Incoming order payload:", order);
+  // ✅ Shopify sends tags as comma-separated string
+  const tagList = tags.split(',').map(t => t.trim().toLowerCase());
 
-    const { id: orderId, tags, customer } = order;
+  if (!tagList.includes('appstle_subscription_recurring_order') || !customer?.id) {
+    console.log(`⚠️ Skipping order ${orderId} (tag not found or customer missing)`);
+    return res.sendStatus(200);
+  }
 
-    if (!tags?.includes('appstle_subscription_recurring_order') || !customer?.id) {
-      console.log(`Skipping order ${orderId} (not a subscription or missing customer)`);
-      return res.sendStatus(200);
-    }
+  const customerId = customer.id;
+  const originalEmail = customer.email;
 
-    const customerId = customer.id;
-    const originalEmail = customer.email;
+  console.log(`🔒 Detected subscription order ${orderId}, suppressing email for customer ${customerId}`);
 
-    console.log(`Detected subscription order ${orderId} - suppressing email`);
+  const customerUrl = `https://${process.env.SHOPIFY_SHOP}/admin/api/${process.env.SHOPIFY_API_VERSION}/customers/${customerId}.json`;
 
-    const customerUrl = `https://${process.env.SHOPIFY_SHOP}/admin/api/${process.env.SHOPIFY_API_VERSION}/customers/${customerId}.json`;
+  const headers = {
+    'X-Shopify-Access-Token': process.env.SHOPIFY_API_TOKEN,
+    'Content-Type': 'application/json',
+  };
 
-    const headers = {
-      'X-Shopify-Access-Token': process.env.SHOPIFY_API_TOKEN,
-      'Content-Type': 'application/json',
-    };
+  // ✅ Respond quickly to Shopify
+  res.sendStatus(200);
 
-    // ✅ Remove email
+  try {
+    // 🛑 Suppress email
     await axios.put(customerUrl, {
       customer: { id: customerId, email: `suppressed-${Date.now()}@noemail.fake` },
     }, { headers });
 
-    console.log(`Removed email for customer ${customerId}`);
+    console.log(`✅ Email removed for customer ${customerId}`);
 
-    // ✅ Restore after 8 seconds
+    // 🔄 Restore after 8 seconds
     setTimeout(async () => {
       try {
         await axios.put(customerUrl, {
           customer: { id: customerId, email: originalEmail },
         }, { headers });
-        console.log(`Restored email for customer ${customerId}`);
+        console.log(`✅ Email restored for customer ${customerId}`);
       } catch (err) {
         console.error('❌ Failed to restore email:', err.message);
       }
     }, 8000);
 
-    res.sendStatus(200);
-
   } catch (err) {
-    console.error('❌ Error in webhook handler:', err.message);
-    res.sendStatus(500);
+    console.error('❌ Failed to suppress email:', err.message);
   }
 });
 
 app.listen(port, () => {
-  console.log(`✅ Middleware app live and listening on port ${port}`);
+  console.log(`🚀 Middleware app live and listening on port ${port}`);
 });
