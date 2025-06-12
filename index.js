@@ -31,12 +31,12 @@ function verifyHmac(req) {
     Buffer.from(hmacHeader, 'utf8'),
     Buffer.from(generatedHmac, 'utf8')
   );
+  console.log("Shopify HMAC:", hmacHeader);
+  console.log("Generated HMAC:", generatedHmac);
 }
 
 console.log("Shopify store:", process.env.SHOPIFY_SHOP);
 console.log("Admin token present?", !!process.env.SHOPIFY_API_TOKEN);
-console.log("Shopify HMAC:", hmacHeader);
-console.log("Generated HMAC:", generatedHmac);
 
 
 app.post('/webhook', async (req, res) => {
