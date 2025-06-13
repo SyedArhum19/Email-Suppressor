@@ -106,10 +106,13 @@ if (customer?.id) {
   }
 }
 
-  if (!tagList.includes('appstle_subscription_recurring_order') || !customer?.id) {
-    console.log(`⚠️ Skipping order ${orderId} (tag not found or customer missing)`);
-    return res.sendStatus(200);
-  }
+  // ✅ Check if customer has the tag
+const customerTagList = customerTags.split(',').map(t => t.trim().toLowerCase());
+
+if (!customerTagList.includes('appstle_subscription_active_customer') || !customer?.id) {
+  console.log(`⚠️ Skipping order ${orderId} (customer tag not found or customer missing)`);
+  return res.sendStatus(200);
+}
 
   const customerId = customer.id;
   const originalEmail = customer.email;
