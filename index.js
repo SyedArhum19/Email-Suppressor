@@ -31,8 +31,6 @@ function verifyHmac(req) {
     Buffer.from(hmacHeader, 'utf8'),
     Buffer.from(generatedHmac, 'utf8')
   );
-  console.log("Shopify HMAC:", hmacHeader);
-  console.log("Generated HMAC:", generatedHmac);
 }
 
 console.log("Shopify store:", process.env.SHOPIFY_SHOP);
@@ -41,6 +39,7 @@ console.log("Admin token present?", !!process.env.SHOPIFY_API_TOKEN);
 
 app.post('/webhook', async (req, res) => {
   console.log("📥 Incoming webhook request");
+  
 
   // 🛡️ Verify HMAC or skip in development
   if (process.env.NODE_ENV !== 'production') {
@@ -53,6 +52,28 @@ app.post('/webhook', async (req, res) => {
   let order;
   try {
     order = JSON.parse(req.rawBody.toString());
+    console.log("🛍️ Incoming Order Payload Summary:");
+console.log("Order ID:", order.id);
+console.log("Tags:", order.tags);
+console.log("Email:", order.email);
+console.log("Customer ID:", order.customer?.id);
+console.log("Customer Email:", order.customer?.email);
+console.log("Line Items:", order.line_items?.length);
+console.log("Line Items Detail:");
+console.dir(order.line_items, { depth: null });
+
+console.log("Shipping Address:");
+console.dir(order.shipping_address, { depth: null });
+
+console.log("Billing Address:");
+console.dir(order.billing_address, { depth: null });
+
+console.log("Discount Codes:");
+console.dir(order.discount_codes, { depth: null });
+
+console.log("Total Price:", order.total_price);
+console.log("Order Created At:", order.created_at);
+
   } catch (err) {
     console.error('❌ Failed to parse order payload:', err.message);
     return res.sendStatus(400);
