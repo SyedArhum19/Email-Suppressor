@@ -103,6 +103,15 @@ console.log("Order Created At:", order.created_at);
     'Content-Type': 'application/json',
   };
 
+  try {
+  const customerResp = await axios.get(customerUrl, { headers });
+  const fullCustomer = customerResp.data.customer;
+
+  console.log("🧾 Customer Tags:", fullCustomer.tags);
+} catch (err) {
+  console.error("❌ Failed to fetch full customer info:", err.message);
+}
+  
   // ✅ Respond quickly to Shopify
   res.sendStatus(200);
 
