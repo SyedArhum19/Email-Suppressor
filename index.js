@@ -86,6 +86,26 @@ console.log("Order Created At:", order.created_at);
   // ✅ Shopify sends tags as comma-separated string
   const tagList = tags.split(',').map(t => t.trim().toLowerCase());
 
+  const customerUrl = `https://${process.env.SHOPIFY_SHOP}/admin/api/${process.env.SHOPIFY_API_VERSION}/customers/${customer?.id}.json`;
+
+const headers = {
+  'X-Shopify-Access-Token': process.env.SHOPIFY_API_TOKEN,
+  'Content-Type': 'application/json',
+};
+
+let customerTags = '';
+
+if (customer?.id) {
+  try {
+    const customerResp = await axios.get(customerUrl, { headers });
+    const fullCustomer = customerResp.data.customer;
+    customerTags = fullCustomer.tags;
+    console.log("🧾 Customer Tags:", customerTags);
+  } catch (err) {
+    console.error("❌ Failed to fetch customer info:", err.message);
+  }
+}
+
   if (!tagList.includes('appstle_subscription_recurring_order') || !customer?.id) {
     console.log(`⚠️ Skipping order ${orderId} (tag not found or customer missing)`);
     return res.sendStatus(200);
@@ -96,21 +116,13 @@ console.log("Order Created At:", order.created_at);
 
   console.log(`🔒 Detected subscription order ${orderId}, suppressing email for customer ${customerId}`);
 
-  const customerUrl = `https://${process.env.SHOPIFY_SHOP}/admin/api/${process.env.SHOPIFY_API_VERSION}/customers/${customerId}.json`;
+  // const customerUrl = `https://${process.env.SHOPIFY_SHOP}/admin/api/${process.env.SHOPIFY_API_VERSION}/customers/${customerId}.json`;
 
-  const headers = {
-    'X-Shopify-Access-Token': process.env.SHOPIFY_API_TOKEN,
-    'Content-Type': 'application/json',
-  };
+  // const headers = {
+  //   'X-Shopify-Access-Token': process.env.SHOPIFY_API_TOKEN,
+  //   'Content-Type': 'application/json',
+  // };
 
-  try {
-  const customerResp = await axios.get(customerUrl, { headers });
-  const fullCustomer = customerResp.data.customer;
-
-  console.log("🧾 Customer Tags:", fullCustomer.tags);
-} catch (err) {
-  console.error("❌ Failed to fetch full customer info:", err.message);
-}
   
   // ✅ Respond quickly to Shopify
   res.sendStatus(200);
